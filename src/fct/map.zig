@@ -21,7 +21,7 @@ fn MapTypeForXsType(comptime f: anytype, comptime XsType: type) type {
     return [
         switch (@typeInfo(XsType)) {
             .array => |a| a.len,
-            .@"struct" => @typeInfo(XsType).@"struct".fields,
+            .@"struct" => @typeInfo(XsType).@"struct".fields.len,
             else => @compileError("mapping for type " ++ @typeName(XsType) ++
                 " is not supported"),
         }
