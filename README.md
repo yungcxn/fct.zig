@@ -18,4 +18,4 @@ zig test
 
 # Installation
 
-Copy the files in `src/fct` in the folder you like and start importing.
+Copy `src/fct/` and `src/fct.zig` in the folder you like and start importing.

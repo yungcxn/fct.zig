@@ -1,11 +1,6 @@
 const std = @import("std");
 
-const map = @import("fct/map.zig");
-
-test {
-    std.testing.refAllDecls(@This());
-    _ = .{map};
-}
+const fct = @import("fct.zig");
 
 // 1.1
 
@@ -102,4 +97,9 @@ pub fn main(init: std.process.Init) void {
         }.f, 2, 3, 4);
         std.debug.assert(result3 == 24); // OK
     }
+}
+
+test {
+    std.testing.refAllDecls(@This());
+    _ = .{fct};
 }
