@@ -16,6 +16,9 @@ pub const find = sval_produce.find;
 pub const find_comptimef = sval_produce.find_comptimef;
 pub const reduce_comptimef = sval_produce.reduce_comptimef;
 
+// helpers
+pub const YsMapType = seq_produce.YsMapType;
+
 test {
     std.testing.refAllDecls(@This());
     _ = .{ sval_produce, seq_produce };

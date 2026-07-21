@@ -91,16 +91,11 @@ fn YsMapFieldType(
         else => @compileError("Unsupported type"),
     };
 
-    // somehow @TypeOf(@field(..)) is not working here; manual way:
-    inline for (@typeInfo(ChildType(XsType)).@"struct".fields) |field| {
-        if (std.mem.eql(u8, field.name, @tagName(fieldenumval))) {
-            return [len]field.type;
-        }
-    }
-    unreachable; // field name must be found since we have the enum value
+    return [len]@FieldType(
+        ChildType(XsType),
+        @tagName(fieldenumval),
+    );
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // runtime version
 pub inline fn filter(comptime pred: anytype, xs: anytype, ys: anytype) usize {
@@ -157,8 +152,6 @@ fn YsComptimeFilterType(
         return [newlen]@TypeOf(xs[0]);
     }
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 test "map_comptimef" {
     // for array
@@ -223,6 +216,18 @@ test "map, comptime map" {
         try std.testing.expectEqualSlices(i32, &[_]i32{ 2, 198, 6 }, &zs);
     }
 
+    // map for slice
+    {
+        var xs = try std.heap.smp_allocator.alloc(i32, 3);
+        defer std.heap.smp_allocator.free(xs);
+        xs[0] = 10;
+        xs[1] = 20;
+        xs[2] = 30;
+        var ys: [3]i32 = undefined;
+        map(double, xs, &ys);
+        try std.testing.expectEqualSlices(i32, &[_]i32{ 20, 40, 60 }, &ys);
+    }
+
     // map: array with comptime-known values
     {
         const xs = [_]i32{ 1, 2, 3 };
@@ -283,14 +288,14 @@ test "map_field" {
     // for xs as tuple
     {
         const Inner = struct { a: i32, b: f64 };
-        const Outer = .{
+        const outer = .{
             Inner{ .a = 1, .b = 2.0 },
             Inner{ .a = 3, .b = 4.0 },
         };
         var ys_a: [2]i32 = undefined;
         var ys_b: [2]f64 = undefined;
-        map_field(Outer, .a, &ys_a);
-        map_field(Outer, .b, &ys_b);
+        map_field(outer, .a, &ys_a);
+        map_field(outer, .b, &ys_b);
         try std.testing.expectEqualSlices(i32, &[_]i32{ 1, 3 }, &ys_a);
         try std.testing.expectEqualSlices(f64, &[_]f64{ 2.0, 4.0 }, &ys_b);
     }
@@ -298,14 +303,29 @@ test "map_field" {
     // for xs as array
     {
         const Inner = struct { a: i32, b: f64 };
-        const Outer = [_]Inner{
+        const outer = [_]Inner{
             Inner{ .a = 1, .b = 2.0 },
             Inner{ .a = 3, .b = 4.0 },
         };
         var ys_a: [2]i32 = undefined;
         var ys_b: [2]f64 = undefined;
-        map_field(Outer, .a, &ys_a);
-        map_field(Outer, .b, &ys_b);
+        map_field(outer, .a, &ys_a);
+        map_field(outer, .b, &ys_b);
+        try std.testing.expectEqualSlices(i32, &[_]i32{ 1, 3 }, &ys_a);
+        try std.testing.expectEqualSlices(f64, &[_]f64{ 2.0, 4.0 }, &ys_b);
+    }
+
+    // for xs as slice
+    {
+        const Inner = struct { a: i32, b: f64 };
+        var outer: []Inner = try std.heap.smp_allocator.alloc(Inner, 2);
+        defer std.heap.smp_allocator.free(outer);
+        outer[0] = Inner{ .a = 1, .b = 2.0 };
+        outer[1] = Inner{ .a = 3, .b = 4.0 };
+        var ys_a: [2]i32 = undefined;
+        var ys_b: [2]f64 = undefined;
+        map_field(outer, .a, &ys_a);
+        map_field(outer, .b, &ys_b);
         try std.testing.expectEqualSlices(i32, &[_]i32{ 1, 3 }, &ys_a);
         try std.testing.expectEqualSlices(f64, &[_]f64{ 2.0, 4.0 }, &ys_b);
     }
@@ -315,12 +335,12 @@ test "map_field_comptimef" {
     // for xs as tuple
     {
         const Inner = struct { a: i32, b: f64 };
-        const Outer = .{
+        const outer = .{
             Inner{ .a = 1, .b = 2.0 },
             Inner{ .a = 3, .b = 4.0 },
         };
-        const ys_a = map_field_comptimef(Outer, .a);
-        const ys_b = map_field_comptimef(Outer, .b);
+        const ys_a = map_field_comptimef(outer, .a);
+        const ys_b = map_field_comptimef(outer, .b);
         try std.testing.expectEqualSlices(i32, &[_]i32{ 1, 3 }, &ys_a);
         try std.testing.expectEqualSlices(f64, &[_]f64{ 2.0, 4.0 }, &ys_b);
     }
@@ -328,18 +348,16 @@ test "map_field_comptimef" {
     // for xs as array
     {
         const Inner = struct { a: i32, b: f64 };
-        const Outer = [_]Inner{
+        const outer = [_]Inner{
             Inner{ .a = 1, .b = 2.0 },
             Inner{ .a = 3, .b = 4.0 },
         };
-        const ys_a = map_field_comptimef(Outer, .a);
-        const ys_b = map_field_comptimef(Outer, .b);
+        const ys_a = map_field_comptimef(outer, .a);
+        const ys_b = map_field_comptimef(outer, .b);
         try std.testing.expectEqualSlices(i32, &[_]i32{ 1, 3 }, &ys_a);
         try std.testing.expectEqualSlices(f64, &[_]f64{ 2.0, 4.0 }, &ys_b);
     }
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 test "filter" {
     const is_even = struct {
@@ -348,6 +366,7 @@ test "filter" {
         }
     }.f;
 
+    // filter for array
     {
         const xs = [_]u32{ 1, 2, 3, 4, 5 };
         var ys: [5]u32 = @splat(0);
@@ -360,8 +379,28 @@ test "filter" {
         );
     }
 
+    // filter for tuple
     {
-        const xs = .{ @as(u32, 1), @as(u32, 2), @as(u32, 3), @as(u32, 4), @as(u32, 5) };
+        const xs = .{ @as(u8, 1), @as(u16, 2), @as(u32, 3), @as(u64, 4), @as(u8, 5) };
+        var ys: [5]u64 = @splat(0);
+        const count = filter(is_even, xs, &ys);
+        try std.testing.expectEqual(@as(usize, 2), count);
+        try std.testing.expectEqualSlices(
+            u64,
+            &[_]u64{ 2, 4 },
+            ys[0..count],
+        );
+    }
+
+    // filter for slice
+    {
+        var xs = try std.heap.smp_allocator.alloc(u32, 5);
+        defer std.heap.smp_allocator.free(xs);
+        xs[0] = 1;
+        xs[1] = 2;
+        xs[2] = 3;
+        xs[3] = 4;
+        xs[4] = 5;
         var ys: [5]u32 = @splat(0);
         const count = filter(is_even, xs, &ys);
         try std.testing.expectEqual(@as(usize, 2), count);
