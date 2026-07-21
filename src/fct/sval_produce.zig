@@ -55,6 +55,18 @@ pub inline fn all(comptime pred: anytype, xs: anytype) bool {
     return true;
 }
 
+// this is for a homogeneously typed seq
+pub inline fn find(
+    comptime pred: anytype,
+    xs: anytype,
+) ?@TypeOf(xs[0]) {
+    if (@typeInfo(@TypeOf(xs)) == .@"struct") {
+        inline for (xs) |x| if (pred(x)) return x;
+    } else {
+        for (xs) |x| if (pred(x)) return x;
+    }
+    return null;
+}
 // this is for a heterogeneously typed tuple
 pub inline fn find_comptimef(
     comptime pred: anytype,
@@ -68,23 +80,8 @@ fn YsComptimeFindType(
     comptime pred: anytype,
     comptime xs: anytype,
 ) type {
-    inline for (xs) |x| {
-        if (pred(x)) return ?@TypeOf(x);
-    }
+    inline for (xs) |x| if (pred(x)) return ?@TypeOf(x);
     return @TypeOf(null);
-}
-
-// this is for a homogeneously typed seq
-pub inline fn find(
-    comptime pred: anytype,
-    xs: anytype,
-) ?@TypeOf(xs[0]) {
-    if (@typeInfo(@TypeOf(xs)) == .@"struct") {
-        inline for (xs) |x| if (pred(x)) return x;
-    } else {
-        for (xs) |x| if (pred(x)) return x;
-    }
-    return null;
 }
 
 test "reduce" {

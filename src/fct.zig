@@ -1,12 +1,17 @@
 const std = @import("std");
 const seq_produce = @import("fct/seq_produce.zig");
 const sval_produce = @import("fct/sval_produce.zig");
+const muldseq_produce = @import("fct/muldseq_produce.zig");
 
 pub const map = seq_produce.map;
 pub const filter = seq_produce.filter;
+pub const take = seq_produce.take;
+pub const partition = seq_produce.partition;
 
 pub const map_comptimef = seq_produce.map_comptimef;
 pub const filter_comptimef = seq_produce.filter_comptimef;
+pub const take_comptimef = seq_produce.take_comptimef;
+pub const partition_comptimef = seq_produce.partition_comptimef;
 
 pub const reduce = sval_produce.reduce;
 pub const any = sval_produce.any;
@@ -21,5 +26,9 @@ pub const YsMapType = seq_produce.YsMapType;
 
 test {
     std.testing.refAllDecls(@This());
-    _ = .{ sval_produce, seq_produce };
+    _ = .{
+        sval_produce,
+        seq_produce,
+        muldseq_produce,
+    };
 }

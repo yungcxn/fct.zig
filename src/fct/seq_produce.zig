@@ -98,7 +98,11 @@ fn YsMapFieldType(
 }
 
 // runtime version
-pub inline fn filter(comptime pred: anytype, xs: anytype, ys: anytype) usize {
+pub inline fn filter(
+    comptime pred: anytype,
+    xs: anytype,
+    ys: anytype,
+) usize {
     var ys_c: usize = 0;
     if (@typeInfo(@TypeOf(xs)) == .@"struct") {
         inline for (xs) |x| if (pred(x)) {
@@ -138,7 +142,7 @@ fn YsComptimeFilterType(
 ) type {
     var newlen = 0;
     if (@typeInfo(@TypeOf(xs)) == .@"struct") {
-        // types could be different, so we construct a tuple
+        // types could be different -> new tuple
         var types: [xs.len]type = undefined;
         inline for (xs) |x| if (pred(x)) {
             types[newlen] = @TypeOf(x);
@@ -151,6 +155,127 @@ fn YsComptimeFilterType(
         };
         return [newlen]@TypeOf(xs[0]);
     }
+}
+
+pub inline fn take(
+    comptime pred: anytype,
+    xs: anytype,
+    ys: anytype,
+) usize {
+    var ys_c: usize = 0;
+    if (@typeInfo(@TypeOf(xs)) == .@"struct") {
+        inline for (xs) |x| {
+            if (!pred(x)) return ys_c;
+            ys[ys_c] = x;
+            ys_c += 1;
+        }
+    } else {
+        for (xs) |x| {
+            if (!pred(x)) return ys_c;
+            ys[ys_c] = x;
+            ys_c += 1;
+        }
+    }
+    return ys_c;
+}
+
+pub inline fn take_comptimef(
+    comptime pred: anytype,
+    comptime xs: anytype,
+) YsComptimeTakeType(pred, xs) {
+    const ys = comptime blk: {
+        var tmp: YsComptimeTakeType(pred, xs) = undefined;
+        var tmp_c: usize = 0;
+        for (xs) |x| {
+            if (!pred(x)) break;
+            tmp[tmp_c] = x;
+            tmp_c += 1;
+        }
+        break :blk tmp;
+    };
+    return ys;
+}
+
+fn YsComptimeTakeType(
+    comptime pred: anytype,
+    comptime xs: anytype,
+) type {
+    var newlen = 0;
+    if (@typeInfo(@TypeOf(xs)) == .@"struct") {
+        // types could be different -> new tuple
+        var types: [xs.len]type = undefined;
+        inline for (xs) |x| {
+            if (!pred(x)) break;
+            types[newlen] = @TypeOf(x);
+            newlen += 1;
+        }
+        return @Tuple(types[0..newlen]);
+    } else {
+        for (xs) |x| {
+            if (!pred(x)) break;
+            newlen += 1;
+        }
+        return [newlen]@TypeOf(xs[0]);
+    }
+}
+
+pub inline fn partition(
+    comptime pred: anytype,
+    xs: anytype,
+    ys_true: anytype,
+    ys_false: anytype,
+) struct { usize, usize } {
+    var ys_true_c: usize = 0;
+    var ys_false_c: usize = 0;
+    if (@typeInfo(@TypeOf(xs)) == .@"struct") {
+        inline for (xs) |x| if (pred(x)) {
+            ys_true[ys_true_c] = x;
+            ys_true_c += 1;
+        } else {
+            ys_false[ys_false_c] = x;
+            ys_false_c += 1;
+        };
+    } else {
+        for (xs) |x| if (pred(x)) {
+            ys_true[ys_true_c] = x;
+            ys_true_c += 1;
+        } else {
+            ys_false[ys_false_c] = x;
+            ys_false_c += 1;
+        };
+    }
+
+    return .{ ys_true_c, ys_false_c };
+}
+
+pub inline fn partition_comptimef(
+    comptime pred: anytype,
+    comptime xs: anytype,
+) YsComptimePartitionType(pred, xs) {
+    const ys_true = filter_comptimef(pred, xs);
+    const ys_false = filter_comptimef(struct {
+        pub fn invpred(x: anytype) bool {
+            return !pred(x);
+        }
+    }.invpred, xs);
+
+    return .{ ys_true, ys_false };
+}
+
+fn YsComptimePartitionType(
+    comptime pred: anytype,
+    comptime xs: anytype,
+) type {
+    return struct {
+        // true type
+        YsComptimeFilterType(pred, xs),
+        // on-the-fly constructed false type
+        YsComptimeFilterType(struct {
+            pub fn invpred(x: anytype) bool {
+                return !pred(x);
+            }
+        }.invpred, xs),
+    };
 }
 
 test "map_comptimef" {
@@ -429,4 +554,94 @@ test "filter_comptimef" {
     try std.testing.expect(@TypeOf(filtered) == struct { u16, u64 });
     try std.testing.expectEqual(@as(u16, 2), filtered[0]);
     try std.testing.expectEqual(@as(u64, 4), filtered[1]);
+}
+
+test "take" {
+    const is_even = struct {
+        fn f(x: u32) bool {
+            return x % 2 == 0;
+        }
+    }.f;
+
+    const xs = [_]u32{ 2, 4, 6, 7, 8 };
+    var ys: [5]u32 = @splat(0);
+    const count = take(is_even, xs, &ys);
+    try std.testing.expectEqual(@as(usize, 3), count);
+    try std.testing.expectEqualSlices(
+        u32,
+        &[_]u32{ 2, 4, 6 },
+        ys[0..count],
+    );
+}
+
+test "take_comptimef" {
+    const is_even = struct {
+        fn f(x: anytype) bool {
+            return @mod(x, @as(@TypeOf(x), 2)) == @as(@TypeOf(x), 0);
+        }
+    }.f;
+
+    const xs = .{
+        @as(u8, 2),
+        @as(u16, 4),
+        @as(u32, 6),
+        @as(u64, 7),
+        @as(u8, 8),
+    };
+    const taken = take_comptimef(is_even, xs);
+    try std.testing.expect(@TypeOf(taken) == struct { u8, u16, u32 });
+    try std.testing.expectEqual(@as(u8, 2), taken[0]);
+    try std.testing.expectEqual(@as(u16, 4), taken[1]);
+    try std.testing.expectEqual(@as(u32, 6), taken[2]);
+}
+
+test "partition" {
+    const is_even = struct {
+        fn f(x: u32) bool {
+            return x % 2 == 0;
+        }
+    }.f;
+
+    const xs = [_]u32{ 1, 2, 3, 4, 5 };
+    var ys_true: [5]u32 = @splat(0);
+    var ys_false: [5]u32 = @splat(0);
+    const counts = partition(is_even, xs, &ys_true, &ys_false);
+    try std.testing.expectEqual(@as(usize, 2), counts[0]);
+    try std.testing.expectEqual(@as(usize, 3), counts[1]);
+    try std.testing.expectEqualSlices(
+        u32,
+        &[_]u32{ 2, 4 },
+        ys_true[0..counts[0]],
+    );
+    try std.testing.expectEqualSlices(
+        u32,
+        &[_]u32{ 1, 3, 5 },
+        ys_false[0..counts[1]],
+    );
+}
+
+test "partition_comptimef" {
+    const is_even = struct {
+        fn f(x: anytype) bool {
+            return @mod(x, @as(@TypeOf(x), 2)) == @as(@TypeOf(x), 0);
+        }
+    }.f;
+
+    const xs = .{
+        @as(u8, 1),
+        @as(u16, 2),
+        @as(u32, 3),
+        @as(u64, 4),
+        @as(u8, 5),
+    };
+    const partitioned = partition_comptimef(is_even, xs);
+    try std.testing.expect(@TypeOf(partitioned) == struct {
+        struct { u16, u64 },
+        struct { u8, u32, u8 },
+    });
+    try std.testing.expectEqual(@as(u16, 2), partitioned[0][0]);
+    try std.testing.expectEqual(@as(u64, 4), partitioned[0][1]);
+    try std.testing.expectEqual(@as(u8, 1), partitioned[1][0]);
+    try std.testing.expectEqual(@as(u32, 3), partitioned[1][1]);
+    try std.testing.expectEqual(@as(u8, 5), partitioned[1][2]);
 }
