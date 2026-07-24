@@ -2,7 +2,12 @@ const std = @import("std");
 const seq_produce = @import("fct/seq_produce.zig");
 const sval_produce = @import("fct/sval_produce.zig");
 const muldseq_produce = @import("fct/muldseq_produce.zig");
-const funcgen = @import("fct/funcgen.zig");
+
+const bind = @import("fct/bind.zig").bind;
+const bind0 = @import("fct/bind.zig").bind0;
+const bind_i = @import("fct/bind.zig").bind_i;
+
+const curry = @import("fct/curry.zig").curry;
 
 pub const map = seq_produce.map;
 pub const filter = seq_produce.filter;
@@ -31,10 +36,4 @@ pub const YsFlatMapType = muldseq_produce.YsFlatMapType;
 
 test {
     std.testing.refAllDecls(@This());
-    _ = .{
-        sval_produce,
-        seq_produce,
-        muldseq_produce,
-        funcgen,
-    };
 }
