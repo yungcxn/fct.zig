@@ -118,6 +118,15 @@ pub inline fn filter(
     return ys_c;
 }
 
+// s = slice returned
+pub inline fn filter_s(
+    comptime pred: anytype,
+    xs: anytype,
+    ys: anytype,
+) usize {
+    return ys.*[filter(pred, xs, ys)];
+}
+
 // if you have comptime-known xs, and do not want
 //   an outbuf.
 pub inline fn filter_comptimef(
@@ -177,6 +186,14 @@ pub inline fn take(
         }
     }
     return ys_c;
+}
+
+pub inline fn take_s(
+    comptime pred: anytype,
+    xs: anytype,
+    ys: anytype,
+) usize {
+    return ys.*[take(pred, xs, ys)];
 }
 
 pub inline fn take_comptimef(
@@ -246,6 +263,19 @@ pub inline fn partition(
     }
 
     return .{ ys_true_c, ys_false_c };
+}
+
+pub inline fn partition_s(
+    comptime pred: anytype,
+    xs: anytype,
+    ys_true: anytype,
+    ys_false: anytype,
+) struct { usize, usize } {
+    const counts = partition(pred, xs, ys_true, ys_false);
+    return .{
+        .{ys_true.*[0..counts[0]]},
+        .{ys_false.*[0..counts[1]]},
+    };
 }
 
 pub inline fn partition_comptimef(
