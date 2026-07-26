@@ -6,16 +6,12 @@ This is just for educational and experimental purposes, and it is much rather re
 
 But if you still insist on functional programming, that's for you.
 
-The `src/main.zig` demonstrates what I speak about in https://cannayci.de/posts/01-fp-zig.ct.
-
 # Test
 
-There is no need to build, but you could build and run all tests:
-
 ```bash
-zig test
+zig build test
 ```
 
 # Installation
 
-Copy `src/fct/` and `src/fct.zig` in the folder you like and start importing.
+Copy what's in `include/` into some folder you like and start importing. `.../fct.zig`.

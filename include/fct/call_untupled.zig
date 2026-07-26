@@ -15,6 +15,10 @@ pub fn untupled_func(comptime f: anytype) UntupledFuncReturnType(f) {
         return UntupledCallFuncs.func_0(f);
     }
 
+    if (argc > 16) {
+        @compileError("untupled_func: too many args, max = 16");
+    }
+
     const decl_name = comptime blk: {
         var buf: [10]u8 = undefined;
         break :blk std.fmt.bufPrint(&buf, "func_{d}", .{argc}) catch {};
