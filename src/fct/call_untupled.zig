@@ -1,5 +1,4 @@
 const std = @import("std");
-
 // this is just a helper to turn @call... syntax with tuples into real func calls
 
 pub fn untupled_func(comptime f: anytype) UntupledFuncReturnType(f) {

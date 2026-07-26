@@ -1,98 +1,9 @@
 const std = @import("std");
-const untupled_func = @import("call_untupled.zig").untupled_func;
 
-pub fn bind0(comptime f: anytype, comptime argval: anytype) ReducedFuncType(f, 0) {
-    return bind_i(f, 0, argval);
-}
-
-pub fn bind(
-    comptime f: anytype,
-    comptime arg_i_val_tup: anytype,
-) ReducedFuncType(f, arg_i_val_tup[0][0]) {
-    const i, const val = arg_i_val_tup[0];
-    const newfunc = bind_i(f, i, val);
-    if (arg_i_val_tup.len == 1) {
-        return newfunc;
-    } else {
-        const rest = arg_i_val_tup[1..];
-        inline for (rest) |*r| {
-            r.*[0] -= 1; // reduced index
-            if (r.*[0] < 0) @compileError("bind: invalid index in arg_i_val_tup");
-        }
-        return bind(newfunc, rest);
-    }
-}
-
-// a f decl does not have the argument names available, therefore we need index&val
-pub fn bind_i(
-    comptime f: anytype,
-    comptime argi: comptime_int,
-    comptime argval: anytype,
-) ReducedFuncType(f, argi) {
-    const f_info = @typeInfo(@TypeOf(f)).@"fn";
-    const ret_type = f_info.return_type orelse @compileError("bind: return type is null");
-    comptime var old_argtypes: [f_info.params.len]type = undefined;
-    comptime var new_argtypes: [f_info.params.len - 1]type = undefined;
-    var new_i: usize = 0;
-
-    inline for (f_info.params, 0..) |param, i| {
-        const pt = param.type orelse @compileError("bind: param type is null");
-
-        old_argtypes[i] = pt;
-
-        if (i == argi) continue;
-
-        new_argtypes[new_i] = pt;
-        new_i += 1;
-    }
-
-    const Callable = struct {
-        const all_argtypes = old_argtypes;
-        const reduced_argtypes = new_argtypes;
-        const AllArgsTuple = @Tuple(&all_argtypes);
-        const ReducedArgsTuple = @Tuple(&reduced_argtypes);
-
-        pub fn call(r_args: ReducedArgsTuple) ret_type {
-            var args: AllArgsTuple = undefined;
-
-            comptime var ri: usize = 0;
-            inline for (0..args.len) |ai| {
-                if (ai == argi) {
-                    args[ai] = argval;
-                } else {
-                    args[ai] = r_args[ri];
-                    ri += 1;
-                }
-            }
-
-            return @call(.always_inline, f, args);
-        }
-    };
-
-    return untupled_func(Callable.call);
-}
-
-fn FuncRetType(comptime f: anytype) type {
-    const f_info = @typeInfo(@TypeOf(f)).@"fn";
-    return f_info.return_type orelse
-        @compileError("func_ret_type: return type is null");
-}
-
-fn ReducedFuncType(comptime f: anytype, comptime argi: comptime_int) type {
-    const f_info = @typeInfo(@TypeOf(f)).@"fn";
-    comptime var new_argtypes: [f_info.params.len - 1]type = undefined;
-    inline for (f_info.params, 0..) |param, i| {
-        const pt = param.type orelse @compileError("bind: param type is null");
-        if (i < argi) {
-            new_argtypes[i] = pt;
-        } else if (i > argi) {
-            new_argtypes[i - 1] = pt;
-        }
-    }
-
-    return @Fn(&new_argtypes, &@splat(.{}), f_info.return_type orelse
-        @compileError("bind: return type is null"), .{ .@"callconv" = .@"inline" });
-}
+const bind_i = @import("../func_manip.zig").bind_i;
+const bind = @import("../func_manip.zig").bind;
+const bind0 = @import("../func_manip.zig").bind0;
+const curry = @import("../func_manip.zig").curry;
 
 test "bind: 1-param function, bind the only arg (-> func_0)" {
     const f = struct {
@@ -797,4 +708,25 @@ test "bind: tupled chained binds with mixed types" {
         .{ 3, "test" },
     });
     try std.testing.expectEqual(10 + 4 + 1, g(true));
+}
+
+test "curry: basic currying with 2 parameters" {
+    const f = struct {
+        fn f(a: i32, b: i32, c: i32, d: i32) i32 {
+            return a + b + c + d;
+        }
+    }.f;
+    try std.testing.expectEqual(10, curry(f)(1)(2)(3)(4));
+}
+
+test "curry: complex parameter types + last arg is runtime" {
+    const f = struct {
+        fn f(a: []const u8, b: ?i32, c: *const f64) f64 {
+            const b_val = b orelse 0;
+            return @as(f64, b_val) + @as(f64, @floatFromInt(a.len)) + c.*;
+        }
+    }.f;
+    var c_val: f64 = 2.5;
+    c_val = 2.4;
+    try std.testing.expectEqual(4.4, curry(f)("hi")(@as(?i32, null))(&c_val));
 }

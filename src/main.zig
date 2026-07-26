@@ -100,6 +100,5 @@ pub fn main(init: std.process.Init) void {
 }
 
 test {
-    std.testing.refAllDecls(@This());
-    _ = .{fct};
+    std.testing.refAllDecls(fct);
 }
