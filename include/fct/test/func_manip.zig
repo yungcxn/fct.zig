@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const bind_i = @import("../func_manip.zig").bind_i;
-const bind = @import("../func_manip.zig").bind;
 const bind0 = @import("../func_manip.zig").bind0;
 const curry = @import("../func_manip.zig").curry;
 
@@ -695,20 +694,20 @@ test "bind: chained binds with mixed types" {
     try std.testing.expectEqual(10 + 4 + 1, g3(true));
 }
 
-test "bind: tupled chained binds with mixed types" {
-    const f = struct {
-        fn f(a: i32, b: f64, c: bool, d: []const u8) i32 {
-            _ = b;
-            return a + @as(i32, @intCast(d.len)) + @intFromBool(c);
-        }
-    }.f;
-    const g = bind(f, .{
-        .{ 0, 10 },
-        .{ 1, @as(f64, 3.14) },
-        .{ 3, "test" },
-    });
-    try std.testing.expectEqual(10 + 4 + 1, g(true));
-}
+// test "bind: tupled chained binds with mixed types" {
+//     const f = struct {
+//         fn f(a: i32, b: f64, c: bool, d: []const u8) i32 {
+//             _ = b;
+//             return a + @as(i32, @intCast(d.len)) + @intFromBool(c);
+//         }
+//     }.f;
+//     const g = bind(f, .{
+//         .{ 0, 10 },
+//         .{ 1, @as(f64, 3.14) },
+//         .{ 3, "test" },
+//     });
+//     try std.testing.expectEqual(10 + 4 + 1, g(true));
+// }
 
 test "curry: basic currying with 2 parameters" {
     const f = struct {

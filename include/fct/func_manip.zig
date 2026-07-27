@@ -5,28 +5,6 @@ pub fn bind0(comptime f: anytype, comptime argval: anytype) ReducedFuncType(f, 0
     return bind_i(f, 0, argval);
 }
 
-pub fn bind(
-    comptime f: anytype,
-    comptime arg_i_val_tup: anytype,
-) ReducedFuncType(f, arg_i_val_tup[0][0]) {
-    const i, const val = arg_i_val_tup[0];
-    const newfunc = bind_i(f, i, val);
-    if (arg_i_val_tup.len == 1) {
-        return newfunc;
-    } else {
-        const rest = comptime blk: {
-            var r = .{};
-            for (1..arg_i_val_tup.len) |k| {
-                const old_i, const old_val = arg_i_val_tup[k];
-                const new_i = old_i - 1;
-                if (new_i < 0) @compileError("bind: invalid index in arg_i_val_tup");
-                r = r ++ .{.{ new_i, old_val }};
-            }
-            break :blk r;
-        };
-        return bind(newfunc, rest);
-    }
-}
 // a f decl does not have the argument names available, therefore we need index&val
 pub fn bind_i(
     comptime f: anytype,

@@ -73,15 +73,6 @@ pub inline fn compose_n_auto(
     return compose_step(fs[0], fs[1..]);
 }
 
-// TODO
-pub const FunctionalTrace = struct {};
-
-// fully comptime func
-pub fn traced_functions(comptime fs: anytype) void {
-    // return fs but with each function wrapped in a
-    _ = fs;
-}
-
 // if there is a function taking in a buf and producing a new one, free the old one
 pub inline fn post_free_manual(
     comptime InputType: type,
@@ -132,14 +123,6 @@ pub inline fn fix_rettype(
             return f(in);
         }
     }.fixed;
-}
-
-inline fn Param0Type(comptime FType: anytype) type {
-    return @typeInfo(@TypeOf(FType)).@"fn".params[0].type.?;
-}
-
-inline fn RetType(comptime FType: anytype) type {
-    return @typeInfo(@TypeOf(FType)).@"fn".return_type.?;
 }
 
 test {
