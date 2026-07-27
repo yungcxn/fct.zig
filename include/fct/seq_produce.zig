@@ -1,5 +1,15 @@
 const std = @import("std");
 
+fn is_slice(comptime T: type) bool {
+    return switch (@typeInfo(T)) {
+        .pointer => |ptr_info| switch (ptr_info.size) {
+            .slice => true,
+            else => false,
+        },
+        else => false,
+    };
+}
+
 pub inline fn map(
     comptime f: anytype,
     xs: anytype,
@@ -10,6 +20,14 @@ pub inline fn map(
     } else {
         for (xs, 0..) |x, i| ys[i] = f(x);
     }
+}
+
+// _inplace must always take ptr due to copy-evasion
+pub inline fn map_inplace(
+    comptime f: anytype,
+    xs: anytype,
+) void {
+    return map(f, if (comptime is_slice(@TypeOf(xs))) xs else xs.*, xs);
 }
 
 // no real-world use
@@ -77,7 +95,8 @@ fn ChildType(comptime T: type) type {
             .one => switch (@typeInfo(info.child)) {
                 .array => |array_info| return array_info.child,
                 .vector => |vector_info| return vector_info.child,
-                else => {},
+                .@"struct" => |struct_info| return struct_info.fields[0].type,
+                else => @compileError("Unsupported: '" ++ @typeName(info.child) ++ "'"),
             },
             .many, .c, .slice => return info.child,
         },

@@ -3,11 +3,22 @@ const seq_produce = @import("fct/seq_produce.zig");
 const sval_produce = @import("fct/sval_produce.zig");
 const muldseq_produce = @import("fct/muldseq_produce.zig");
 const func_manip = @import("fct/func_manip.zig");
+const point_free = @import("fct/point_free.zig");
 
-const bind = func_manip.bind;
-const bind0 = func_manip.bind0;
-const bind_i = func_manip.bind_i;
-const curry = func_manip.curry;
+pub const compose_manual = point_free.compose_manual;
+pub const compose_auto = point_free.compose_auto;
+pub const flow_manual = point_free.flow_manual;
+pub const flow_auto = point_free.flow_auto;
+pub const post_free_manual = point_free.post_free_manual;
+pub const post_free_auto = point_free.post_free_auto;
+pub const id = point_free.id;
+pub const tap = point_free.tap;
+pub const field = point_free.field;
+
+pub const bind = func_manip.bind;
+pub const bind0 = func_manip.bind0;
+pub const bind_i = func_manip.bind_i;
+pub const curry = func_manip.curry;
 
 pub const map = seq_produce.map;
 pub const filter = seq_produce.filter;

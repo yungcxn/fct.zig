@@ -2,6 +2,7 @@ const std = @import("std");
 
 const map = @import("../seq_produce.zig").map;
 const map_field = @import("../seq_produce.zig").map_field;
+const map_inplace = @import("../seq_produce.zig").map_inplace;
 const map_ret = @import("../seq_produce.zig").map_ret;
 const map_new = @import("../seq_produce.zig").map_new;
 const filter = @import("../seq_produce.zig").filter;
@@ -225,6 +226,46 @@ test "map_field_comptimef" {
         try std.testing.expectEqualSlices(i32, &[_]i32{ 1, 3 }, &ys_a);
         try std.testing.expectEqualSlices(f64, &[_]f64{ 2.0, 4.0 }, &ys_b);
     }
+}
+
+test "map_inplace: array" {
+    const double = struct {
+        fn f(x: i32) i32 {
+            return x * 2;
+        }
+    }.f;
+
+    var xs = [_]i32{ 10, 20, 30 };
+    map_inplace(double, &xs);
+    try std.testing.expectEqualSlices(i32, &[_]i32{ 20, 40, 60 }, &xs);
+}
+
+test "map_inplace: slice" {
+    const double = struct {
+        fn f(x: i32) i32 {
+            return x * 2;
+        }
+    }.f;
+
+    var xs = try std.heap.smp_allocator.alloc(i32, 3);
+    xs[0] = 10;
+    xs[1] = 20;
+    xs[2] = 30;
+    map_inplace(double, xs);
+    try std.testing.expectEqualSlices(i32, &[_]i32{ 20, 40, 60 }, xs);
+}
+
+test "map_inplace: tuple" {
+    const double = struct {
+        fn f(x: i32) i32 {
+            return x * 2;
+        }
+    }.f;
+
+    var xs: @Tuple(&[_]type{ i32, i32, i32 }) = .{ 1, 20, 30 };
+    xs[0] = 10;
+    map_inplace(double, &xs);
+    try std.testing.expectEqualSlices(i32, &[_]i32{ 20, 40, 60 }, &xs);
 }
 
 test "map_ret" {

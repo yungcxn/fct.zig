@@ -13,6 +13,18 @@ pub inline fn compose_manual(
     }.composed;
 }
 
+inline fn ParamNType(comptime f: anytype, comptime n: usize) type {
+    return @typeInfo(@TypeOf(f)).@"fn".params[n].type.?;
+}
+
+inline fn Param0Type(comptime f: anytype) type {
+    return ParamNType(f, 0);
+}
+
+inline fn RetType(comptime f: anytype) type {
+    return @typeInfo(@TypeOf(f)).@"fn".return_type.?;
+}
+
 pub inline fn compose_auto(
     comptime f: anytype,
     comptime g: anytype,
@@ -68,6 +80,28 @@ pub const FunctionalTrace = struct {};
 pub fn traced_functions(comptime fs: anytype) void {
     // return fs but with each function wrapped in a
     _ = fs;
+}
+
+// if there is a function taking in a buf and producing a new one, free the old one
+pub inline fn post_free_manual(
+    comptime InputType: type,
+    comptime OutputType: type,
+    comptime alloc: std.mem.Allocator,
+    comptime f: anytype,
+) fn (InputType) OutputType {
+    return struct {
+        pub fn post_free(in: InputType) OutputType {
+            defer alloc.free(in);
+            return f(in);
+        }
+    }.post_free;
+}
+
+pub inline fn post_free_auto(
+    comptime alloc: std.mem.Allocator,
+    comptime f: anytype,
+) fn (Param0Type(f)) RetType(f) {
+    return post_free_manual(Param0Type(f), RetType(f), alloc, f);
 }
 
 pub inline fn id(in: anytype) @TypeOf(in) {
